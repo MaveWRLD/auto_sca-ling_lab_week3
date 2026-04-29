@@ -224,7 +224,7 @@ Resources:
       LaunchTemplateName: asg-lab-lt
       LaunchTemplateData:
         ImageId: '{{resolve:ssm:/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64}}'
-        InstanceType: t2.micro
+        InstanceType: t3.micro
         SecurityGroupIds:
           - !Ref EC2SecurityGroup
         MetadataOptions:
