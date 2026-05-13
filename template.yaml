@@ -235,16 +235,16 @@ Resources:
             #!/bin/bash
             set -e
 
-            yum update -y
-            amazon-linux-extras install epel -y
-            yum install -y httpd stress
+            dnf update -y
+            dnf install -y httpd stress
 
             systemctl enable httpd
             systemctl start httpd
 
-            INSTANCE_ID=$(curl -sf http://169.254.169.254/latest/meta-data/instance-id)
-            PRIVATE_IP=$(curl -sf http://169.254.169.254/latest/meta-data/local-ipv4)
-            AZ=$(curl -sf http://169.254.169.254/latest/meta-data/placement/availability-zone)
+            TOKEN=$(curl -s -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600")
+            INSTANCE_ID=$(curl -s -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/meta-data/instance-id)
+            PRIVATE_IP=$(curl -s -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/meta-data/local-ipv4)
+            AZ=$(curl -s -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/meta-data/placement/availability-zone)
 
             cat > /var/www/html/index.html <<'HTML'
             <!DOCTYPE html>
