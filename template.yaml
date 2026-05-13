@@ -265,6 +265,8 @@ Resources:
                               padding: 16px 48px; font-size: 1rem; cursor: pointer;
                               letter-spacing: 2px; font-weight: 600; }
                 .stress-btn:hover { background: #c73652; }
+                .stress-btn:disabled { background: #555; cursor: not-allowed; }
+                .status-badge { margin-top: 16px; font-size: 0.85rem; color: #e94560; letter-spacing: 1px; min-height: 1.2em; }
                 .note { margin-top: 20px; font-size: 0.78rem; color: #666; text-align: center; }
               </style>
             </head>
@@ -284,10 +286,40 @@ Resources:
                   <div class="lbl">AZ</div>
                 </div>
               </div>
-              <form method="POST" action="/stress">
-                <button type="submit" class="stress-btn">STRESS CPU NOW</button>
-              </form>
+              <button class="stress-btn" id="stressBtn" onclick="startStress(this)">STRESS CPU NOW</button>
+              <div id="statusMsg" class="status-badge"></div>
               <p class="note">&#8635; Refreshes every 5s — watch Instance ID change as ASG scales up</p>
+              <script>
+                (function(){
+                  var t = sessionStorage.getItem('stressAt');
+                  if (t) {
+                    var elapsed = Math.floor((Date.now() - t) / 1000);
+                    if (elapsed < 300) {
+                      document.getElementById('statusMsg').textContent = 'STRESSING — ' + (300 - elapsed) + 's remaining';
+                      var btn = document.getElementById('stressBtn');
+                      btn.disabled = true;
+                      btn.textContent = 'STRESSING...';
+                    } else {
+                      sessionStorage.removeItem('stressAt');
+                    }
+                  }
+                })();
+                function startStress(btn) {
+                  btn.disabled = true;
+                  btn.textContent = 'STARTING...';
+                  fetch('/stress', {method: 'POST'})
+                    .then(function() {
+                      sessionStorage.setItem('stressAt', Date.now());
+                      btn.textContent = 'STRESSING...';
+                      document.getElementById('statusMsg').textContent = 'STRESSING — 300s. Watch instance count rise as ASG scales out.';
+                    })
+                    .catch(function() {
+                      btn.disabled = false;
+                      btn.textContent = 'STRESS CPU NOW';
+                      document.getElementById('statusMsg').textContent = 'Error starting stress — try again.';
+                    });
+                }
+              </script>
             </body>
             </html>
             HTML
@@ -299,13 +331,10 @@ Resources:
             mkdir -p /var/www/cgi-bin
             cat > /var/www/cgi-bin/stress.sh <<'CGISCRIPT'
             #!/bin/bash
-            echo "Content-Type: text/html"
+            echo "Content-Type: text/plain"
             echo ""
             stress --cpu 2 --timeout 300 &
-            echo "<html><head><meta http-equiv='refresh' content='2;url=/'></head>"
-            echo "<body style='font-family:sans-serif;background:#1a1a2e;color:#eee;text-align:center;padding:60px'>"
-            echo "<p>Stress running 300s on $(hostname). Redirecting...</p>"
-            echo "</body></html>"
+            echo "ok"
             CGISCRIPT
             chmod +x /var/www/cgi-bin/stress.sh
 
