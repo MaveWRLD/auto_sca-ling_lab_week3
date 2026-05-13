@@ -234,92 +234,60 @@ Resources:
           Fn::Base64: !Sub |
             #!/bin/bash
             set -e
-            dnf update -y
-            dnf install -y httpd stress
+
+            yum update -y
+            amazon-linux-extras install epel -y
+            yum install -y httpd stress
+
             systemctl enable httpd
             systemctl start httpd
 
-            TOKEN=$(curl -s -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600")
-            INSTANCE_ID=$(curl -s -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/meta-data/instance-id)
-            PRIVATE_IP=$(curl -s -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/meta-data/local-ipv4)
-            AZ=$(curl -s -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/meta-data/placement/availability-zone)
+            INSTANCE_ID=$(curl -sf http://169.254.169.254/latest/meta-data/instance-id)
+            PRIVATE_IP=$(curl -sf http://169.254.169.254/latest/meta-data/local-ipv4)
+            AZ=$(curl -sf http://169.254.169.254/latest/meta-data/placement/availability-zone)
 
             cat > /var/www/html/index.html <<'HTML'
             <!DOCTYPE html>
-            <html>
+            <html lang="en">
             <head>
               <meta charset="UTF-8">
               <meta http-equiv="refresh" content="5">
-              <title>Auto Scaling Lab</title>
+              <title>Auto Scaling Demo</title>
               <style>
-                body { font-family: sans-serif; background: #1a1a2e; color: #eee;
-                       display: flex; flex-direction: column; align-items: center;
-                       padding: 40px 20px; margin: 0; }
-                h1   { font-size: 1.3rem; letter-spacing: 2px; margin-bottom: 28px; }
-                .stats { display: flex; gap: 16px; margin-bottom: 36px; flex-wrap: wrap; justify-content: center; }
-                .stat  { background: #16213e; border: 1px solid #0f3460; border-radius: 8px;
-                         padding: 20px 28px; text-align: center; min-width: 140px; }
-                .stat .val { font-size: 1rem; font-weight: 700; color: #e94560; word-break: break-all; }
-                .stat .lbl { font-size: 0.7rem; color: #aaa; margin-top: 8px; letter-spacing: 2px; }
-                .stress-btn { background: #e94560; color: #fff; border: none; border-radius: 8px;
-                              padding: 16px 48px; font-size: 1rem; cursor: pointer;
-                              letter-spacing: 2px; font-weight: 600; }
-                .stress-btn:hover { background: #c73652; }
-                .stress-btn:disabled { background: #555; cursor: not-allowed; }
-                .status-badge { margin-top: 16px; font-size: 0.85rem; color: #e94560; letter-spacing: 1px; min-height: 1.2em; }
-                .note { margin-top: 20px; font-size: 0.78rem; color: #666; text-align: center; }
+                body { font-family: sans-serif; max-width: 600px; margin: 60px auto; padding: 0 20px; }
+                .card { background: #f4f6f9; border-radius: 10px; padding: 30px; margin-bottom: 20px; }
+                h1 { color: #1a1a2e; }
+                table { width: 100%; border-collapse: collapse; }
+                td { padding: 8px 12px; border-bottom: 1px solid #ddd; }
+                td:first-child { font-weight: 600; color: #555; width: 150px; }
+                .stress-btn {
+                  display: inline-block; margin-top: 20px; padding: 14px 32px;
+                  background: #2980b9; color: white; border: none; border-radius: 8px;
+                  font-size: 16px; cursor: pointer; text-decoration: none;
+                }
+                .stress-btn:hover { background: #c0392b; }
+                .note { font-size: 13px; color: #777; margin-top: 8px; }
               </style>
             </head>
             <body>
-              <h1>AUTO SCALING LAB — WEEK 3</h1>
-              <div class="stats">
-                <div class="stat">
-                  <div class="val">INSTANCE_ID_PLACEHOLDER</div>
-                  <div class="lbl">INSTANCE ID</div>
-                </div>
-                <div class="stat">
-                  <div class="val">PRIVATE_IP_PLACEHOLDER</div>
-                  <div class="lbl">PRIVATE IP</div>
-                </div>
-                <div class="stat">
-                  <div class="val">AZ_PLACEHOLDER</div>
-                  <div class="lbl">AZ</div>
-                </div>
+              <h1> Auto Scaling Demo</h1>
+              <div class="card">
+                <h2>Instance Information</h2>
+                <table>
+                  <tr><td>Instance ID</td><td>INSTANCE_ID_PLACEHOLDER</td></tr>
+                  <tr><td>Private IP</td><td>PRIVATE_IP_PLACEHOLDER</td></tr>
+                  <tr><td>Availability Zone</td><td>AZ_PLACEHOLDER</td></tr>
+                </table>
               </div>
-              <button class="stress-btn" id="stressBtn" onclick="startStress(this)">STRESS CPU NOW</button>
-              <div id="statusMsg" class="status-badge"></div>
-              <p class="note">&#8635; Refreshes every 5s — watch Instance ID change as ASG scales up</p>
-              <script>
-                (function(){
-                  var t = sessionStorage.getItem('stressAt');
-                  if (t) {
-                    var elapsed = Math.floor((Date.now() - t) / 1000);
-                    if (elapsed < 300) {
-                      document.getElementById('statusMsg').textContent = 'STRESSING — ' + (300 - elapsed) + 's remaining';
-                      var btn = document.getElementById('stressBtn');
-                      btn.disabled = true;
-                      btn.textContent = 'STRESSING...';
-                    } else {
-                      sessionStorage.removeItem('stressAt');
-                    }
-                  }
-                })();
-                function startStress(btn) {
-                  btn.disabled = true;
-                  btn.textContent = 'STARTING...';
-                  fetch('/stress', {method: 'POST'})
-                    .then(function() {
-                      sessionStorage.setItem('stressAt', Date.now());
-                      btn.textContent = 'STRESSING...';
-                      document.getElementById('statusMsg').textContent = 'STRESSING — 300s. Watch instance count rise as ASG scales out.';
-                    })
-                    .catch(function() {
-                      btn.disabled = false;
-                      btn.textContent = 'STRESS CPU NOW';
-                      document.getElementById('statusMsg').textContent = 'Error starting stress — try again.';
-                    });
-                }
-              </script>
+              <div class="card">
+                <h2>CPU Stress Test</h2>
+                <p>Click the button below to spike CPU on <strong>this instance</strong>.
+                   Watch the Auto Scaling Group detect the load and launch new instances.</p>
+                <a href="/stress" class="stress-btn"> Trigger CPU Stress</a>
+                <p class="note">Runs <code>stress --cpu 2 --timeout 300</code> in the background.
+                   Refresh this page every few seconds — the Instance ID above will change
+                   as new instances join the target group.</p>
+              </div>
             </body>
             </html>
             HTML
@@ -328,23 +296,31 @@ Resources:
             sed -i "s/PRIVATE_IP_PLACEHOLDER/$PRIVATE_IP/g"   /var/www/html/index.html
             sed -i "s/AZ_PLACEHOLDER/$AZ/g"                   /var/www/html/index.html
 
+            # Enable CGI in Apache
+            sed -i 's|#AddHandler cgi-script .cgi|AddHandler cgi-script .cgi .sh|' /etc/httpd/conf/httpd.conf
             mkdir -p /var/www/cgi-bin
+
+            cat > /var/www/html/.htaccess <<'HTACCESS'
+            Options +ExecCGI
+            HTACCESS
+
             cat > /var/www/cgi-bin/stress.sh <<'CGISCRIPT'
             #!/bin/bash
-            echo "Content-Type: text/plain"
+            echo "Content-Type: text/html"
             echo ""
             stress --cpu 2 --timeout 300 &
-            echo "ok"
+            echo "<h2>Stress running for 300s on $(hostname)</h2>"
             CGISCRIPT
             chmod +x /var/www/cgi-bin/stress.sh
 
+            # Redirect /stress to cgi
             cat >> /etc/httpd/conf/httpd.conf <<'APACHECONF'
 
+            Alias /stress /var/www/cgi-bin/stress.sh
             <Directory /var/www/cgi-bin>
                 Options +ExecCGI
                 AddHandler cgi-script .sh
             </Directory>
-            ScriptAlias /stress /var/www/cgi-bin/stress.sh
             APACHECONF
 
             systemctl restart httpd
