@@ -233,13 +233,92 @@ Resources:
         UserData:
           Fn::Base64: !Sub |
             #!/bin/bash
+            set -e
             dnf update -y
-            dnf install -y httpd
-            systemctl start httpd
+            dnf install -y httpd stress
             systemctl enable httpd
+            systemctl start httpd
+
             TOKEN=$(curl -s -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600")
-            INSTANCE_ID=$(curl -s -H "X-aws-ec2-metadata-token: ${!TOKEN}" http://169.254.169.254/latest/meta-data/instance-id)
-            echo "<!DOCTYPE html><html><head><title>Auto Scaling Lab</title></head><body><h1>Auto Scaling Lab - Week 3</h1><p><strong>Instance ID:</strong> ${!INSTANCE_ID}</p><p>Refresh this page to observe traffic distributed across instances during scaling events.</p></body></html>" > /var/www/html/index.html
+            INSTANCE_ID=$(curl -s -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/meta-data/instance-id)
+            PRIVATE_IP=$(curl -s -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/meta-data/local-ipv4)
+            AZ=$(curl -s -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/meta-data/placement/availability-zone)
+
+            cat > /var/www/html/index.html <<'HTML'
+            <!DOCTYPE html>
+            <html>
+            <head>
+              <meta charset="UTF-8">
+              <meta http-equiv="refresh" content="5">
+              <title>Auto Scaling Lab</title>
+              <style>
+                body { font-family: sans-serif; background: #1a1a2e; color: #eee;
+                       display: flex; flex-direction: column; align-items: center;
+                       padding: 40px 20px; margin: 0; }
+                h1   { font-size: 1.3rem; letter-spacing: 2px; margin-bottom: 28px; }
+                .stats { display: flex; gap: 16px; margin-bottom: 36px; flex-wrap: wrap; justify-content: center; }
+                .stat  { background: #16213e; border: 1px solid #0f3460; border-radius: 8px;
+                         padding: 20px 28px; text-align: center; min-width: 140px; }
+                .stat .val { font-size: 1rem; font-weight: 700; color: #e94560; word-break: break-all; }
+                .stat .lbl { font-size: 0.7rem; color: #aaa; margin-top: 8px; letter-spacing: 2px; }
+                .stress-btn { background: #e94560; color: #fff; border: none; border-radius: 8px;
+                              padding: 16px 48px; font-size: 1rem; cursor: pointer;
+                              letter-spacing: 2px; font-weight: 600; }
+                .stress-btn:hover { background: #c73652; }
+                .note { margin-top: 20px; font-size: 0.78rem; color: #666; text-align: center; }
+              </style>
+            </head>
+            <body>
+              <h1>AUTO SCALING LAB — WEEK 3</h1>
+              <div class="stats">
+                <div class="stat">
+                  <div class="val">INSTANCE_ID_PLACEHOLDER</div>
+                  <div class="lbl">INSTANCE ID</div>
+                </div>
+                <div class="stat">
+                  <div class="val">PRIVATE_IP_PLACEHOLDER</div>
+                  <div class="lbl">PRIVATE IP</div>
+                </div>
+                <div class="stat">
+                  <div class="val">AZ_PLACEHOLDER</div>
+                  <div class="lbl">AZ</div>
+                </div>
+              </div>
+              <form method="POST" action="/stress">
+                <button type="submit" class="stress-btn">STRESS CPU NOW</button>
+              </form>
+              <p class="note">&#8635; Refreshes every 5s — watch Instance ID change as ASG scales up</p>
+            </body>
+            </html>
+            HTML
+
+            sed -i "s/INSTANCE_ID_PLACEHOLDER/$INSTANCE_ID/g" /var/www/html/index.html
+            sed -i "s/PRIVATE_IP_PLACEHOLDER/$PRIVATE_IP/g"   /var/www/html/index.html
+            sed -i "s/AZ_PLACEHOLDER/$AZ/g"                   /var/www/html/index.html
+
+            mkdir -p /var/www/cgi-bin
+            cat > /var/www/cgi-bin/stress.sh <<'CGISCRIPT'
+            #!/bin/bash
+            echo "Content-Type: text/html"
+            echo ""
+            stress --cpu 2 --timeout 300 &
+            echo "<html><head><meta http-equiv='refresh' content='2;url=/'></head>"
+            echo "<body style='font-family:sans-serif;background:#1a1a2e;color:#eee;text-align:center;padding:60px'>"
+            echo "<p>Stress running 300s on $(hostname). Redirecting...</p>"
+            echo "</body></html>"
+            CGISCRIPT
+            chmod +x /var/www/cgi-bin/stress.sh
+
+            cat >> /etc/httpd/conf/httpd.conf <<'APACHECONF'
+
+            <Directory /var/www/cgi-bin>
+                Options +ExecCGI
+                AddHandler cgi-script .sh
+            </Directory>
+            ScriptAlias /stress /var/www/cgi-bin/stress.sh
+            APACHECONF
+
+            systemctl restart httpd
 
   AutoScalingGroup:
     Type: AWS::AutoScaling::AutoScalingGroup
