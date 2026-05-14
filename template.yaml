@@ -254,39 +254,41 @@ Resources:
               <meta http-equiv="refresh" content="5">
               <title>Auto Scaling Demo</title>
               <style>
-                body { font-family: sans-serif; max-width: 600px; margin: 60px auto; padding: 0 20px; }
-                .card { background: #f4f6f9; border-radius: 10px; padding: 30px; margin-bottom: 20px; }
-                h1 { color: #1a1a2e; }
-                table { width: 100%; border-collapse: collapse; }
-                td { padding: 8px 12px; border-bottom: 1px solid #ddd; }
-                td:first-child { font-weight: 600; color: #555; width: 150px; }
-                .stress-btn {
-                  display: inline-block; margin-top: 20px; padding: 14px 32px;
-                  background: #2980b9; color: white; border: none; border-radius: 8px;
-                  font-size: 16px; cursor: pointer; text-decoration: none;
-                }
-                .stress-btn:hover { background: #c0392b; }
-                .note { font-size: 13px; color: #777; margin-top: 8px; }
+                *{box-sizing:border-box;margin:0;padding:0}
+                body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f8fafc;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:40px 20px}
+                .wrap{width:100%;max-width:520px}
+                .header{display:flex;align-items:center;gap:10px;margin-bottom:22px}
+                .status-dot{width:9px;height:9px;border-radius:50%;background:#22c55e;flex-shrink:0}
+                .title{font-size:18px;font-weight:700;color:#0f172a;letter-spacing:-0.3px}
+                .refresh{margin-left:auto;font-size:10px;color:#94a3b8;background:#e2e8f0;padding:2px 7px;border-radius:10px}
+                .card{background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:18px 20px;margin-bottom:14px}
+                .card-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:#94a3b8;margin-bottom:12px}
+                .row{display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid #f1f5f9}
+                .row:last-child{border-bottom:none}
+                .lbl{font-size:12px;color:#64748b;font-weight:500}
+                .val{font-size:12px;color:#0f172a;font-weight:600;font-family:'SFMono-Regular',Consolas,monospace}
+                .az{background:#fff7ed;color:#ea580c;border:1px solid #fed7aa;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600}
+                .btn{display:block;width:100%;padding:11px;background:#f97316;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;text-align:center;text-decoration:none;letter-spacing:0.2px}
+                .btn:hover{background:#ea580c}
               </style>
             </head>
             <body>
-              <h1> Auto Scaling Demo</h1>
-              <div class="card">
-                <h2>Instance Information</h2>
-                <table>
-                  <tr><td>Instance ID</td><td>INSTANCE_ID_PLACEHOLDER</td></tr>
-                  <tr><td>Private IP</td><td>PRIVATE_IP_PLACEHOLDER</td></tr>
-                  <tr><td>Availability Zone</td><td>AZ_PLACEHOLDER</td></tr>
-                </table>
-              </div>
-              <div class="card">
-                <h2>CPU Stress Test</h2>
-                <p>Click the button below to spike CPU on <strong>this instance</strong>.
-                   Watch the Auto Scaling Group detect the load and launch new instances.</p>
-                <a href="/stress" class="stress-btn"> Trigger CPU Stress</a>
-                <p class="note">Runs <code>stress --cpu 2 --timeout 300</code> in the background.
-                   Refresh this page every few seconds — the Instance ID above will change
-                   as new instances join the target group.</p>
+              <div class="wrap">
+                <div class="header">
+                  <div class="status-dot"></div>
+                  <span class="title">Auto Scaling Demo</span>
+                  <span class="refresh">&#8635; 5s</span>
+                </div>
+                <div class="card">
+                  <div class="card-title">Instance Information</div>
+                  <div class="row"><span class="lbl">Instance ID</span><span class="val">INSTANCE_ID_PLACEHOLDER</span></div>
+                  <div class="row"><span class="lbl">Private IP</span><span class="val">PRIVATE_IP_PLACEHOLDER</span></div>
+                  <div class="row"><span class="lbl">Availability Zone</span><span class="az">AZ_PLACEHOLDER</span></div>
+                </div>
+                <div class="card">
+                  <div class="card-title">CPU Stress Test</div>
+                  <a href="/stress" class="btn">&#128293; Trigger CPU Stress</a>
+                </div>
               </div>
             </body>
             </html>
