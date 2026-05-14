@@ -1,4 +1,3 @@
 template-file-path: template.yaml
 parameters: {}
-tags:
-  Project: auto-scaling
+tags: {}
