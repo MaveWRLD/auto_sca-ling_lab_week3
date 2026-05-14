@@ -235,7 +235,6 @@ Resources:
             #!/bin/bash
             set -e
 
-            dnf update -y
             dnf install -y httpd stress
 
             systemctl enable httpd
@@ -310,7 +309,7 @@ Resources:
             #!/bin/bash
             echo "Content-Type: text/html"
             echo ""
-            stress --cpu 2 --timeout 300 &
+            stress --cpu 2 --timeout 600 &
             echo "<h2>Stress running for 300s on $(hostname)</h2>"
             CGISCRIPT
             chmod +x /var/www/cgi-bin/stress.sh
@@ -343,7 +342,7 @@ Resources:
       TargetGroupARNs:
         - !Ref TargetGroup
       HealthCheckType: ELB
-      HealthCheckGracePeriod: 300
+      HealthCheckGracePeriod: 60
       Tags:
         - Key: Name
           Value: asg-lab-instance
