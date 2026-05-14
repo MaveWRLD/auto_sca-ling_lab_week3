@@ -70,17 +70,11 @@ Resources:
         - Key: Name
           Value: asg-lab-private-subnet-2
 
-  NatEIP:
-    Type: AWS::EC2::EIP
-    DependsOn: IGWAttachment
-    Properties:
-      Domain: vpc
-
   NatGateway:
     Type: AWS::EC2::NatGateway
     Properties:
-      AllocationId: !GetAtt NatEIP.AllocationId
-      SubnetId: !Ref PublicSubnet1
+      AvailabilityMode: regional
+      VpcId: !Ref VPC
       Tags:
         - Key: Name
           Value: asg-lab-nat-gw
